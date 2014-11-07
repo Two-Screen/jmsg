@@ -1,4 +1,4 @@
-## jmsg
+## jmsg [![Build Status](https://secure.travis-ci.org/Two-Screen/jmsg.png)](http://travis-ci.org/Two-Screen/jmsg)
 
 Jmsg is a simple module to communicate with another instance across a stream or
 other kind of message channel. Communication is two-way, and messages are mixed
