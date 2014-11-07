@@ -1,0 +1,29 @@
+{
+    "name": "jmsg",
+    "version": "0.1.0",
+    "description": "Duplex JSON event / action channels",
+
+    "homepage": "http://github.com/stephank/jmsg",
+    "repository": {
+        "type": "git",
+        "url": "http://github.com/stephank/jmsg.git"
+    },
+    "author": {
+        "name": "Stéphan Kochen",
+        "email": "stephan@kochen.nl",
+        "url": "http://stephan.kochen.nl/"
+    },
+
+    "dependencies": {
+        "carrier": "0.1"
+    },
+    "devDependencies": {
+        "tap": "0.4"
+    },
+
+    "scripts": {
+        "test": "tap ./tests.js"
+    },
+
+    "main": "./index.js"
+}
