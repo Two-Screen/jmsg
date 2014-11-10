@@ -1,6 +1,6 @@
 {
     "name": "jmsg",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Duplex JSON event / action channels",
 
     "homepage": "http://github.com/stephank/jmsg",
