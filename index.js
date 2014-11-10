@@ -42,16 +42,16 @@ function Jmsg(writeFn, handlers) {
 }
 
 // Send a JSON message.
-Jmsg.prototype.send = function(a, b, c) {
-    // type, value, [cb]
+Jmsg.prototype.send = function(a, b, c, d) {
+    // type, value, [cb], [handle]
     if (typeof(b) !== 'function')
-        this._sendRaw({ t: a, v: b }, c);
-    // type, [cb]
+        this._sendRaw({ t: a, v: b }, c, d);
+    // type, [cb], [handle]
     else
-        this._sendRaw({ t: a }, b);
+        this._sendRaw({ t: a }, b, d);
 };
 
-Jmsg.prototype._sendRaw = function(msg, cb) {
+Jmsg.prototype._sendRaw = function(msg, cb, handle) {
     if (typeof(cb) === 'function') {
         var handlers = this._handlers;
         var callbacks = this._callbacks;
@@ -64,16 +64,16 @@ Jmsg.prototype._sendRaw = function(msg, cb) {
             }, this.timeout)
         };
     }
-    this._writeFn(msg);
+    this._writeFn(msg, handle);
 };
 
 // Dispatch a JSON message.
-Jmsg.prototype.dispatch = function(msg) {
+Jmsg.prototype.dispatch = function(msg, handle) {
     var self = this;
 
     var seq = msg.s;
-    var callback = seq ? function(err, val, cb) {
-        self._sendRaw({ r: seq, e: errorSerializer(err), v: val }, cb);
+    var callback = seq ? function(err, val, cb, handle) {
+        self._sendRaw({ r: seq, e: errorSerializer(err), v: val }, cb, handle);
     } : noReplyCallback;
 
     var fn, tmp;
@@ -84,7 +84,7 @@ Jmsg.prototype.dispatch = function(msg) {
         if (fn) {
             delete callback[tmp];
             clearTimeout(fn.timeout);
-            fn.fn.call(handlers, msg.e, msg.v, callback);
+            fn.fn.call(handlers, msg.e, msg.v, callback, handle);
         }
         else if (seq) {
             callback(new Error("Unknown sequence number"));
@@ -93,7 +93,7 @@ Jmsg.prototype.dispatch = function(msg) {
     else if ((tmp = msg.t)) {
         fn = handlers.hasOwnProperty(tmp) && handlers[tmp];
         if (fn)
-            fn.call(handlers, msg.v, callback);
+            fn.call(handlers, msg.v, callback, handle);
         else if (seq)
             callback(new Error("No such action"));
     }
