@@ -137,10 +137,18 @@ exports.stream = function(stream, handlers) {
     return handle;
 };
 
-// Process cluster messages. To communicate with the master, pass no arguments.
-// To communicate with a worker, pass the worker object.
-exports.cluster = function(worker, handlers) {
-    var channel = require('cluster').isMaster ? worker : process;
+// Process cluster messages.
+exports.cluster = function(a, b) {
+    // worker, [handlers]
+    if (process.send) {
+        channel = process;
+        handlers = a;
+    }
+    // [handlers]
+    else {
+        channel = a;
+        handlers = b;
+    }
 
     var handle = exports(channel.send.bind(channel), handlers);
 
