@@ -119,7 +119,7 @@ exports = module.exports = function(writeFn, handlers) {
 // Process on a duplex stream.
 exports.stream = function(stream, handlers) {
     var handle = exports(function(msg) {
-        s.write(JSON.stringify(msg) + "\n");
+        stream.write(JSON.stringify(msg) + "\n");
     }, handlers);
 
     var carry = require('carrier').carry(stream);
