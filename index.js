@@ -82,7 +82,7 @@ Jmsg.prototype.dispatch = function(msg, handle) {
         var callbacks = self._callbacks;
         fn = callbacks[tmp];
         if (fn) {
-            delete callback[tmp];
+            delete callbacks[tmp];
             clearTimeout(fn.timeout);
             fn.fn.call(handlers, msg.e, msg.v, callback, handle);
         }
