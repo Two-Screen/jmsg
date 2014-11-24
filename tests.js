@@ -26,12 +26,12 @@ test('action / reply', { timeout: 500 }, function(t) {
     };
 
     function leftReplyCb(err, num, cb) {
-        t.pass('Left side received reply ' + num);
+        t.ok(!err, 'Left side received reply ' + num);
         cb(null, num + 1, num < 3 && leftReplyCb);
     }
 
     function rightReplyCb(err, num, cb) {
-        t.pass('Right side received reply ' + num);
+        t.ok(!err, 'Right side received reply ' + num);
         cb(null, num + 1, num < 4 && rightReplyCb);
     }
 
@@ -42,8 +42,8 @@ test('event', { timeout: 500 }, function(t) {
     t.plan(2);
     var pair = createPair();
 
-    pair.right.handlers.beep = function() {
-        t.pass('Received event');
+    pair.right.handlers.beep = function(err) {
+        t.ok(!err, 'Received event');
     };
     pair.left.send('beep', function(err) {
         t.is(err.message, 'Timeout', 'Event reply should time out');
