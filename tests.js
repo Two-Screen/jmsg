@@ -68,3 +68,27 @@ test('bad action / reply', { timeout: 500 }, function(t) {
     };
     pair.left.send('beep');
 });
+
+test('close', { timeout: 500 }, function(t) {
+    t.plan(4);
+    var pair = createPair();
+
+    // This is here to check for double callbacks.
+    pair.right.handlers.good = function(arg, cb) {
+        t.pass('Received good action');
+        cb();
+    };
+    pair.left.send('good', function(err) {
+        t.ok(!err, 'Received good reply');
+    });
+
+    pair.right.handlers.bad = function(arg, cb) {
+        t.pass('Received bad action');
+    };
+    pair.left.send('bad', function(err) {
+        t.is(err.message, 'Connection closed',
+            'Open callback receives error on close');
+    });
+
+    pair.left.close();
+});
