@@ -9,8 +9,10 @@ function Jmsg(writeFn, handlers) {
 
 // Send a JSON message.
 Jmsg.prototype.send = function(a, b, c, d) {
+    if (!this._writeFn)
+        exports.dummySend(a, b, c, d);
     // type, value, [cb], [handle]
-    if (typeof(b) !== 'function')
+    else if (typeof(b) !== 'function')
         this._sendRaw({ t: a, v: b }, c, d);
     // type, [cb], [handle]
     else
@@ -71,6 +73,7 @@ Jmsg.prototype.close = function(err) {
     var handlers = this._handlers;
     var callbacks = this._callbacks;
     this._callbacks = Object.create(null);
+    this._writeFn = null;
     Object.keys(callbacks).forEach(function(key) {
         if (!err) err = new Error("Connection closed");
         callbacks[key].fn.call(handlers, err, null,
@@ -137,6 +140,14 @@ exports.cluster = function(a, b) {
 exports.noReplyCallback = function(err, obj, cb) {
     if (cb)
         cb(new Error("No reply expected"), null, exports.noReplyCallback);
+};
+
+// A dummy send function used when the connection is down. Events are silently
+// dropped, and actions immediately error.
+exports.dummySend = function(a, b, c, d) {
+    var cb = c || b;
+    if (typeof(cb) === 'function')
+        cb(new Error("Connection closed"), null, exports.noReplyCallback);
 };
 
 // Error serialization matching bunyan. (Both MIT)
