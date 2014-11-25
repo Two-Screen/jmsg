@@ -70,7 +70,7 @@ test('bad action / reply', { timeout: 500 }, function(t) {
 });
 
 test('close', { timeout: 500 }, function(t) {
-    t.plan(4);
+    t.plan(5);
     var pair = createPair();
 
     // This is here to check for double callbacks.
@@ -91,4 +91,9 @@ test('close', { timeout: 500 }, function(t) {
     });
 
     pair.left.close();
+
+    pair.left.send('good', function(err) {
+        t.is(err.message, 'Connection closed',
+            'Callback receives error after close');
+    });
 });
