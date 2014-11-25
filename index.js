@@ -26,7 +26,8 @@ Jmsg.prototype._sendRaw = function(msg, cb, handle) {
             fn: cb,
             timeout: setTimeout(function() {
                 delete callbacks[seq];
-                cb.call(handlers, new Error("Timeout"), null, noReplyCallback);
+                cb.call(handlers, new Error("Timeout"),
+                    null, exports.noReplyCallback);
             }, this.timeout)
         };
     }
@@ -40,7 +41,7 @@ Jmsg.prototype.dispatch = function(msg, handle) {
     var seq = msg.s;
     var callback = seq ? function(err, val, cb, handle) {
         self._sendRaw({ r: seq, e: errorSerializer(err), v: val }, cb, handle);
-    } : noReplyCallback;
+    } : exports.noReplyCallback;
 
     var fn, tmp;
     var handlers = self.handlers;
@@ -72,7 +73,8 @@ Jmsg.prototype.close = function(err) {
     this._callbacks = Object.create(null);
     Object.keys(callbacks).forEach(function(key) {
         if (!err) err = new Error("Connection closed");
-        callbacks[key].fn.call(handlers, err, null, noReplyCallback, null);
+        callbacks[key].fn.call(handlers, err, null,
+            exports.noReplyCallback, null);
     });
 };
 
@@ -132,9 +134,9 @@ exports.cluster = function(a, b) {
 
 // The callback function passed to handlers when the other side doesn't
 // expect a reply to the message.
-var noReplyCallback = function(err, obj, cb) {
+exports.noReplyCallback = function(err, obj, cb) {
     if (cb)
-        cb(new Error("No reply expected"), null, noReplyCallback);
+        cb(new Error("No reply expected"), null, exports.noReplyCallback);
 };
 
 // Error serialization matching bunyan. (Both MIT)
