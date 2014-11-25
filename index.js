@@ -1,14 +1,13 @@
 // The callback function passed to handlers when the other side doesn't
 // expect a reply to the message.
-function noReplyCallback(err, obj, cb) {
+var noReplyCallback = function(err, obj, cb) {
     if (cb)
         cb(new Error("No reply expected"), null, noReplyCallback);
-}
+};
 
 // Error serialization matching bunyan. (Both MIT)
 // https://github.com/trentm/node-bunyan/blob/e43a1a405f379c37d59c4227168dca0e8f41d052/lib/bunyan.js#L968-L1002
-function getFullErrorStack(ex)
-{
+var getFullErrorStack = function(ex) {
     var ret = ex.stack || ex.toString();
     if (typeof(ex.cause) === 'function') {
         var cex = ex.cause();
@@ -16,7 +15,7 @@ function getFullErrorStack(ex)
             ret += '\nCaused by: ' + getFullErrorStack(cex);
     }
     return ret;
-}
+};
 
 var errorSerializer = function(v) {
     if (v && v.stack) {
