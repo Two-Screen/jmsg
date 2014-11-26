@@ -1,4 +1,5 @@
 var net = require('net');
+var zlib = require('zlib');
 var test = require('tap').test;
 var jmsg = require('./');
 
@@ -125,7 +126,34 @@ test('duplex streams', { timeout: 500 }, function(t) {
     createSocketPair(t, function(leftSocket, rightSocket) {
         var left = jmsg.stream(leftSocket);
         var right = jmsg.stream(rightSocket);
+        left.timeout = right.timeout = 100;
 
+        right.handlers.beep = function(arg, cb) {
+            t.pass('Right side received action');
+            cb();
+        };
+        left.send('beep', function(err) {
+            t.ok(!err, 'Left side received reply');
+        });
+    });
+});
+
+test('read/write streams', { timeout: 500 }, function(t) {
+    t.plan(2);
+
+    createSocketPair(t, function(leftSocket, rightSocket) {
+        var leftWrite = zlib.createGzip({ flush: zlib.Z_SYNC_FLUSH });
+        var leftRead = zlib.createGunzip();
+        leftWrite.pipe(leftSocket);
+        leftSocket.pipe(leftRead);
+
+        var rightWrite = zlib.createGzip({ flush: zlib.Z_SYNC_FLUSH });
+        var rightRead = zlib.createGunzip();
+        rightWrite.pipe(rightSocket);
+        rightSocket.pipe(rightRead);
+
+        var left = jmsg.streams(leftRead, leftWrite);
+        var right = jmsg.streams(rightRead, rightWrite);
         left.timeout = right.timeout = 100;
 
         right.handlers.beep = function(arg, cb) {

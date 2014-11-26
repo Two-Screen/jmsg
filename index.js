@@ -87,13 +87,13 @@ exports = module.exports = function(writeFn, handlers) {
     return new Jmsg(writeFn, handlers);
 };
 
-// Process on a duplex stream.
-exports.stream = function(stream, handlers) {
+// Process on a pair of readable and writable streams.
+exports.streams = function(readable, writable, handlers) {
     var handle = exports(function(msg) {
-        stream.write(JSON.stringify(msg) + "\n");
+        writable.write(JSON.stringify(msg) + "\n");
     }, handlers);
 
-    var carry = require('carrier').carry(stream);
+    var carry = require('carrier').carry(readable);
 
     carry.on('line', function(msg) {
         try { msg = JSON.parse(msg); }
@@ -108,6 +108,11 @@ exports.stream = function(stream, handlers) {
     });
 
     return handle;
+};
+
+// Process on a duplex stream.
+exports.stream = function(stream, handlers) {
+    return exports.streams(stream, stream, handlers);
 };
 
 // Process cluster messages.
