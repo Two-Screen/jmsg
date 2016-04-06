@@ -1,6 +1,6 @@
 {
   "name": "jmsg",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "Duplex JSON event / action channels",
   "homepage": "http://github.com/Two-Screen/jmsg",
   "license": "MIT",
