@@ -1,3 +1,5 @@
+'use strict';
+
 var net = require('net');
 var zlib = require('zlib');
 var test = require('tap').test;

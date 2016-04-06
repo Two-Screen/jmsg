@@ -1,3 +1,5 @@
+'use strict';
+
 function Jmsg(writeFn, handlers) {
     this.handlers = handlers || {};
     this.timeout = 60000;
