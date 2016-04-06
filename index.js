@@ -8,9 +8,10 @@ function Jmsg(writeFn, handlers) {
     this._callbacks = Object.create(null);
     this._writeFn = writeFn;
 }
+var proto = Jmsg.prototype;
 
 // Send a JSON message.
-Jmsg.prototype.send = function(a, b, c, d) {
+proto.send = function(a, b, c, d) {
     if (!this._writeFn)
         exports.dummySend(a, b, c, d);
     // type, value, [cb], [handle]
@@ -21,7 +22,7 @@ Jmsg.prototype.send = function(a, b, c, d) {
         this._sendRaw({ t: a }, b, d);
 };
 
-Jmsg.prototype._sendRaw = function(msg, cb, handle) {
+proto._sendRaw = function(msg, cb, handle) {
     if (typeof(cb) === 'function') {
         var handlers = this._handlers;
         var callbacks = this._callbacks;
@@ -39,7 +40,7 @@ Jmsg.prototype._sendRaw = function(msg, cb, handle) {
 };
 
 // Dispatch a JSON message.
-Jmsg.prototype.dispatch = function(msg, handle) {
+proto.dispatch = function(msg, handle) {
     var self = this;
 
     var seq = msg.s;
@@ -71,7 +72,7 @@ Jmsg.prototype.dispatch = function(msg, handle) {
 };
 
 // Close the instance, finishing all callbacks.
-Jmsg.prototype.close = function(err) {
+proto.close = function(err) {
     if (!err) err = Error("Connection closed");
     var handlers = this._handlers;
     var callbacks = this._callbacks;
