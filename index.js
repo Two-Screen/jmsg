@@ -72,14 +72,15 @@ Jmsg.prototype.dispatch = function(msg, handle) {
 
 // Close the instance, finishing all callbacks.
 Jmsg.prototype.close = function(err) {
+    if (!err) err = Error("Connection closed");
     var handlers = this._handlers;
     var callbacks = this._callbacks;
     this._callbacks = Object.create(null);
     this._writeFn = null;
     Object.keys(callbacks).forEach(function(key) {
-        if (!err) err = Error("Connection closed");
-        callbacks[key].fn.call(handlers, err, null,
-            exports.noReplyCallback, null);
+        var fn = callbacks[key];
+        clearTimeout(fn.timeout);
+        fn.fn.call(handlers, err, null, exports.noReplyCallback, null);
     });
 };
 
