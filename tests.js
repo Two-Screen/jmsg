@@ -1,71 +1,71 @@
 'use strict';
 
-var net = require('net');
-var zlib = require('zlib');
-var test = require('tap').test;
-var jmsg = require('./');
+const net = require('net');
+const zlib = require('zlib');
+const test = require('tap').test;
+const jmsg = require('./');
 
-function createPair() {
-    var left = jmsg(function(obj) {
+const createPair = () => {
+    const left = jmsg((obj) => {
         right.dispatch(obj);
     });
 
-    var right = jmsg(function(obj) {
+    const right = jmsg((obj) => {
         left.dispatch(obj);
     });
 
     left.timeout = right.timeout = 100;
 
     return { left: left, right: right };
-}
+};
 
-test('action / reply', { timeout: 500 }, function(t) {
+test('action / reply', { timeout: 500 }, (t) => {
     t.plan(5);
 
-    var pair = createPair();
+    const pair = createPair();
 
-    pair.right.handlers.beep = function(num, cb) {
+    pair.right.handlers.beep = (num, cb) => {
         t.pass('Right side received action');
         cb(null, num + 1, rightReplyCb);
     };
 
-    function leftReplyCb(err, num, cb) {
+    const leftReplyCb = (err, num, cb) => {
         t.ok(!err, 'Left side received reply ' + num);
         cb(null, num + 1, num < 3 && leftReplyCb);
-    }
+    };
 
-    function rightReplyCb(err, num, cb) {
+    const rightReplyCb = (err, num, cb) => {
         t.ok(!err, 'Right side received reply ' + num);
         cb(null, num + 1, num < 4 && rightReplyCb);
-    }
+    };
 
     pair.left.send('beep', 0, leftReplyCb);
 });
 
-test('event', { timeout: 500 }, function(t) {
+test('event', { timeout: 500 }, (t) => {
     t.plan(2);
-    var pair = createPair();
+    const pair = createPair();
 
-    pair.right.handlers.beep = function(err) {
+    pair.right.handlers.beep = (err) => {
         t.ok(!err, 'Received event');
     };
-    pair.left.send('beep', function(err) {
+    pair.left.send('beep', (err) => {
         t.is(err.message, 'Timeout', 'Event reply should time out');
     });
 });
 
-test('bad action / reply', { timeout: 500 }, function(t) {
+test('bad action / reply', { timeout: 500 }, (t) => {
     t.plan(3);
-    var pair = createPair();
+    const pair = createPair();
 
-    pair.left.send('beep', function(err) {
+    pair.left.send('beep', (err) => {
         t.is(err.message, 'No such action',
             'Non-existant action should error');
     });
 
-    pair.right.handlers.beep = function(val, cb) {
+    pair.right.handlers.beep = (val, cb) => {
         t.pass('Received action');
-        cb(null, null, function(err) {
+        cb(null, null, (err) => {
             t.is(err.message, 'No reply expected',
                 'Reply to event should error');
         });
@@ -73,96 +73,96 @@ test('bad action / reply', { timeout: 500 }, function(t) {
     pair.left.send('beep');
 });
 
-test('close', { timeout: 500 }, function(t) {
+test('close', { timeout: 500 }, (t) => {
     t.plan(5);
-    var pair = createPair();
+    const pair = createPair();
 
     // This is here to check for double callbacks.
-    pair.right.handlers.good = function(arg, cb) {
+    pair.right.handlers.good = (arg, cb) => {
         t.pass('Received good action');
         cb();
     };
-    pair.left.send('good', function(err) {
+    pair.left.send('good', (err) => {
         t.ok(!err, 'Received good reply');
     });
 
-    pair.right.handlers.bad = function(arg, cb) {
+    pair.right.handlers.bad = () => {
         t.pass('Received bad action');
     };
-    pair.left.send('bad', function(err) {
+    pair.left.send('bad', (err) => {
         t.is(err.message, 'Connection closed',
             'Open callback receives error on close');
     });
 
     pair.left.close();
 
-    pair.left.send('good', function(err) {
+    pair.left.send('good', (err) => {
         t.is(err.message, 'Connection closed',
             'Callback receives error after close');
     });
 });
 
 
-function createSocketPair(t, cb) {
-    var right;
-    var server = net.createServer(function(left) {
-        t.on('end', function() {
+const createSocketPair = (t, cb) => {
+    let right;
+    const server = net.createServer((left) => {
+        t.on('end', () => {
             left.destroy();
         });
         cb(left, right);
     });
-    t.on('end', function() {
+    t.on('end', () => {
         server.close();
     });
-    server.listen(0, function() {
+    server.listen(0, () => {
         right = net.connect(server.address().port);
-        t.on('end', function() {
+        t.on('end', () => {
             right.destroy();
         });
     });
-}
+};
 
-test('duplex streams', { timeout: 500 }, function(t) {
+test('duplex streams', { timeout: 500 }, (t) => {
     t.plan(2);
 
-    createSocketPair(t, function(leftSocket, rightSocket) {
-        var left = jmsg.stream(leftSocket);
-        var right = jmsg.stream(rightSocket);
+    createSocketPair(t, (leftSocket, rightSocket) => {
+        const left = jmsg.stream(leftSocket);
+        const right = jmsg.stream(rightSocket);
         left.timeout = right.timeout = 100;
 
-        right.handlers.beep = function(arg, cb) {
+        right.handlers.beep = (arg, cb) => {
             t.pass('Right side received action');
             cb();
         };
-        left.send('beep', function(err) {
+        left.send('beep', (err) => {
             t.ok(!err, 'Left side received reply');
         });
     });
 });
 
-test('read/write streams', { timeout: 500 }, function(t) {
+test('read/write streams', { timeout: 500 }, (t) => {
     t.plan(2);
 
-    createSocketPair(t, function(leftSocket, rightSocket) {
-        var leftWrite = zlib.createGzip({ flush: zlib.Z_SYNC_FLUSH });
-        var leftRead = zlib.createGunzip();
+    createSocketPair(t, (leftSocket, rightSocket) => {
+        const leftWrite = zlib.createGzip({ flush: zlib.Z_SYNC_FLUSH });
+        const leftRead = zlib.createGunzip();
         leftWrite.pipe(leftSocket);
         leftSocket.pipe(leftRead);
 
-        var rightWrite = zlib.createGzip({ flush: zlib.Z_SYNC_FLUSH });
-        var rightRead = zlib.createGunzip();
+        const rightWrite = zlib.createGzip({ flush: zlib.Z_SYNC_FLUSH });
+        const rightRead = zlib.createGunzip();
         rightWrite.pipe(rightSocket);
         rightSocket.pipe(rightRead);
 
-        var left = jmsg.streams(leftRead, leftWrite);
-        var right = jmsg.streams(rightRead, rightWrite);
+        const left = jmsg.streams(leftRead, leftWrite);
+        const right = jmsg.streams(rightRead, rightWrite);
         left.timeout = right.timeout = 100;
 
-        right.handlers.beep = function(arg, cb) {
+        right.handlers.beep = (arg, cb) => {
             t.pass('Right side received action');
             cb();
         };
-        left.send('beep', function(err) {
+        left.send('beep', (err) => {
             t.ok(!err, 'Left side received reply');
         });
     });

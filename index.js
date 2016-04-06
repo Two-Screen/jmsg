@@ -1,113 +1,115 @@
 'use strict';
 
-function Jmsg(writeFn, handlers) {
-    this.handlers = handlers || {};
-    this.timeout = 60000;
+class Jmsg {
+    constructor(writeFn, handlers) {
+        this.handlers = handlers || {};
+        this.timeout = 60000;
 
-    this._seq = 1;
-    this._callbacks = Object.create(null);
-    this._writeFn = writeFn;
-}
-var proto = Jmsg.prototype;
-
-// Send a JSON message.
-proto.send = function(a, b, c, d) {
-    if (!this._writeFn)
-        exports.dummySend(a, b, c, d);
-    // type, value, [cb], [handle]
-    else if (typeof(b) !== 'function')
-        this._sendRaw({ t: a, v: b }, c, d);
-    // type, [cb], [handle]
-    else
-        this._sendRaw({ t: a }, b, d);
-};
-
-proto._sendRaw = function(msg, cb, handle) {
-    if (typeof(cb) === 'function') {
-        var handlers = this._handlers;
-        var callbacks = this._callbacks;
-        var seq = msg.s = this._seq++;
-        callbacks[seq] = {
-            fn: cb,
-            timeout: setTimeout(function() {
-                delete callbacks[seq];
-                cb.call(handlers, Error("Timeout"),
-                    null, exports.noReplyCallback);
-            }, this.timeout)
-        };
+        this._seq = 1;
+        this._callbacks = Object.create(null);
+        this._writeFn = writeFn;
     }
-    this._writeFn(msg, handle);
-};
 
-// Dispatch a JSON message.
-proto.dispatch = function(msg, handle) {
-    var self = this;
+    // Send a JSON message.
+    send(a, b, c, d) {
+        if (!this._writeFn)
+            exports.dummySend(a, b, c, d);
+        // type, value, [cb], [handle]
+        else if (typeof(b) !== 'function')
+            this._sendRaw({ t: a, v: b }, c, d);
+        // type, [cb], [handle]
+        else
+            this._sendRaw({ t: a }, b, d);
+    }
 
-    var seq = msg.s;
-    var callback = seq ? function(err, val, cb, handle) {
-        self._sendRaw({ r: seq, e: errorSerializer(err), v: val }, cb, handle);
-    } : exports.noReplyCallback;
+    _sendRaw(msg, cb, handle) {
+        if (typeof(cb) === 'function') {
+            const handlers = this._handlers;
+            const callbacks = this._callbacks;
+            const seq = msg.s = this._seq++;
+            callbacks[seq] = {
+                fn: cb,
+                timeout: setTimeout(() => {
+                    delete callbacks[seq];
+                    cb.call(handlers, Error("Timeout"),
+                        null, exports.noReplyCallback);
+                }, this.timeout)
+            };
+        }
+        this._writeFn(msg, handle);
+    }
 
-    var fn, tmp;
-    var handlers = self.handlers;
-    if ((tmp = msg.r)) {
-        var callbacks = self._callbacks;
-        fn = callbacks[tmp];
-        if (fn) {
-            delete callbacks[tmp];
+    // Dispatch a JSON message.
+    dispatch(msg, handle) {
+        const seq = msg.s;
+        const callback = seq ? (err, val, cb, handle) => {
+            this._sendRaw({
+                r: seq,
+                e: errorSerializer(err),
+                v: val
+            }, cb, handle);
+        } : exports.noReplyCallback;
+
+        let fn, tmp;
+        const handlers = this.handlers;
+        if ((tmp = msg.r)) {
+            const callbacks = this._callbacks;
+            fn = callbacks[tmp];
+            if (fn) {
+                delete callbacks[tmp];
+                clearTimeout(fn.timeout);
+                fn.fn.call(handlers, msg.e, msg.v, callback, handle);
+            }
+            else if (seq) {
+                callback(Error("Unknown sequence number"));
+            }
+        }
+        else if ((tmp = msg.t)) {
+            fn = handlers.hasOwnProperty(tmp) && handlers[tmp];
+            if (fn)
+                fn.call(handlers, msg.v, callback, handle);
+            else if (seq)
+                callback(Error("No such action"));
+        }
+    }
+
+    // Close the instance, finishing all callbacks.
+    close(err) {
+        if (!err) err = Error("Connection closed");
+        const handlers = this._handlers;
+        const callbacks = this._callbacks;
+        this._callbacks = Object.create(null);
+        this._writeFn = null;
+        Object.keys(callbacks).forEach((key) => {
+            const fn = callbacks[key];
             clearTimeout(fn.timeout);
-            fn.fn.call(handlers, msg.e, msg.v, callback, handle);
-        }
-        else if (seq) {
-            callback(Error("Unknown sequence number"));
-        }
+            fn.fn.call(handlers, err, null, exports.noReplyCallback, null);
+        });
     }
-    else if ((tmp = msg.t)) {
-        fn = handlers.hasOwnProperty(tmp) && handlers[tmp];
-        if (fn)
-            fn.call(handlers, msg.v, callback, handle);
-        else if (seq)
-            callback(Error("No such action"));
-    }
-};
-
-// Close the instance, finishing all callbacks.
-proto.close = function(err) {
-    if (!err) err = Error("Connection closed");
-    var handlers = this._handlers;
-    var callbacks = this._callbacks;
-    this._callbacks = Object.create(null);
-    this._writeFn = null;
-    Object.keys(callbacks).forEach(function(key) {
-        var fn = callbacks[key];
-        clearTimeout(fn.timeout);
-        fn.fn.call(handlers, err, null, exports.noReplyCallback, null);
-    });
-};
-
+}
 
 // Main export.
-exports = module.exports = function(writeFn, handlers) {
+exports = module.exports = (writeFn, handlers) => {
     return new Jmsg(writeFn, handlers);
 };
 
 // Process on a pair of readable and writable streams.
-exports.streams = function(readable, writable, handlers) {
-    var handle = exports(function(msg) {
+exports.streams = (readable, writable, handlers) => {
+    const handle = exports((msg) => {
         writable.write(JSON.stringify(msg) + "\n");
     }, handlers);
 
-    var carry = require('carrier').carry(readable);
+    const carry = require('carrier').carry(readable);
 
-    carry.on('line', function(msg) {
+    carry.on('line', (msg) => {
         try { msg = JSON.parse(msg); }
-        catch (err) {}
+        catch (err) { /* ignore */ }
 
         if (typeof(msg) === 'object' && msg !== null)
             handle.dispatch(msg);
     });
 
-    carry.on('end', function() {
+    carry.on('end', () => {
         handle.close();
     });
 
@@ -115,12 +117,13 @@ exports.streams = function(readable, writable, handlers) {
 };
 
 // Process on a duplex stream.
-exports.stream = function(stream, handlers) {
+exports.stream = (stream, handlers) => {
     return exports.streams(stream, stream, handlers);
 };
 
 // Process cluster messages.
-exports.cluster = function(a, b) {
+exports.cluster = (a, b) => {
+    let channel, handlers;
     // worker, [handlers]
     if (process.send) {
         channel = process;
@@ -132,46 +135,45 @@ exports.cluster = function(a, b) {
         handlers = b;
     }
 
-    var handle = exports(channel.send.bind(channel), handlers);
+    const handle = exports(channel.send.bind(channel), handlers);
 
     channel.on('message', handle.dispatch.bind(handle));
 
-    channel.on('exit', function() {
+    channel.on('exit', () => {
         handle.close();
     });
 
     return handle;
 };
 
-
 // The callback function passed to handlers when the other side doesn't
 // expect a reply to the message.
-exports.noReplyCallback = function(err, obj, cb) {
+exports.noReplyCallback = (err, obj, cb) => {
     if (cb)
         cb(Error("No reply expected"), null, exports.noReplyCallback);
 };
 
 // A dummy send function used when the connection is down. Events are silently
 // dropped, and actions immediately error.
-exports.dummySend = function(a, b, c, d) {
-    var cb = c || b;
+exports.dummySend = (a, b, c) => {
+    const cb = c || b;
     if (typeof(cb) === 'function')
         cb(Error("Connection closed"), null, exports.noReplyCallback);
 };
 
 // Error serialization matching bunyan. (Both MIT)
 // https://github.com/trentm/node-bunyan/blob/e43a1a405f379c37d59c4227168dca0e8f41d052/lib/bunyan.js#L968-L1002
-var getFullErrorStack = function(ex) {
-    var ret = ex.stack || ex.toString();
+const getFullErrorStack = (ex) => {
+    let ret = ex.stack || ex.toString();
     if (typeof(ex.cause) === 'function') {
-        var cex = ex.cause();
+        const cex = ex.cause();
         if (cex)
             ret += '\nCaused by: ' + getFullErrorStack(cex);
     }
     return ret;
 };
 
-var errorSerializer = function(v) {
+const errorSerializer = (v) => {
     if (v && v.stack) {
         v = {
             message: v.message,
