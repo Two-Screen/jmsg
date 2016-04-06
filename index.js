@@ -28,7 +28,7 @@ Jmsg.prototype._sendRaw = function(msg, cb, handle) {
             fn: cb,
             timeout: setTimeout(function() {
                 delete callbacks[seq];
-                cb.call(handlers, new Error("Timeout"),
+                cb.call(handlers, Error("Timeout"),
                     null, exports.noReplyCallback);
             }, this.timeout)
         };
@@ -56,7 +56,7 @@ Jmsg.prototype.dispatch = function(msg, handle) {
             fn.fn.call(handlers, msg.e, msg.v, callback, handle);
         }
         else if (seq) {
-            callback(new Error("Unknown sequence number"));
+            callback(Error("Unknown sequence number"));
         }
     }
     else if ((tmp = msg.t)) {
@@ -64,7 +64,7 @@ Jmsg.prototype.dispatch = function(msg, handle) {
         if (fn)
             fn.call(handlers, msg.v, callback, handle);
         else if (seq)
-            callback(new Error("No such action"));
+            callback(Error("No such action"));
     }
 };
 
@@ -75,7 +75,7 @@ Jmsg.prototype.close = function(err) {
     this._callbacks = Object.create(null);
     this._writeFn = null;
     Object.keys(callbacks).forEach(function(key) {
-        if (!err) err = new Error("Connection closed");
+        if (!err) err = Error("Connection closed");
         callbacks[key].fn.call(handlers, err, null,
             exports.noReplyCallback, null);
     });
@@ -144,7 +144,7 @@ exports.cluster = function(a, b) {
 // expect a reply to the message.
 exports.noReplyCallback = function(err, obj, cb) {
     if (cb)
-        cb(new Error("No reply expected"), null, exports.noReplyCallback);
+        cb(Error("No reply expected"), null, exports.noReplyCallback);
 };
 
 // A dummy send function used when the connection is down. Events are silently
@@ -152,7 +152,7 @@ exports.noReplyCallback = function(err, obj, cb) {
 exports.dummySend = function(a, b, c, d) {
     var cb = c || b;
     if (typeof(cb) === 'function')
-        cb(new Error("Connection closed"), null, exports.noReplyCallback);
+        cb(Error("Connection closed"), null, exports.noReplyCallback);
 };
 
 // Error serialization matching bunyan. (Both MIT)
