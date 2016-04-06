@@ -5,9 +5,17 @@ class Jmsg {
         this.handlers = handlers || {};
         this.timeout = 60000;
 
-        this._seq = 1;
-        this._callbacks = Object.create(null);
+        this._callbacks = [];
         this._writeFn = writeFn;
+    }
+
+    // Remove undefineds off the end of the callback list.
+    _trimCallbacks() {
+        const callbacks = this._callbacks;
+        let i = callbacks.length - 1;
+        while (i >= 0 && callbacks[i] === undefined)
+            i--;
+        callbacks.length = i + 1;
     }
 
     // Send a JSON message.
@@ -26,11 +34,17 @@ class Jmsg {
         if (typeof(cb) === 'function') {
             const handlers = this._handlers;
             const callbacks = this._callbacks;
-            const seq = msg.s = this._seq++;
+
+            let seq = 0;
+            while (callbacks[seq])
+                seq++;
+            msg.s = seq;
+
             callbacks[seq] = {
                 fn: cb,
                 timeout: setTimeout(() => {
-                    delete callbacks[seq];
+                    callbacks[seq] = undefined;
+                    this._trimCallbacks();
                     cb.call(handlers, Error("Timeout"),
                         null, exports.noReplyCallback);
                 }, this.timeout)
@@ -42,7 +56,7 @@ class Jmsg {
     // Dispatch a JSON message.
     dispatch(msg, handle) {
         const seq = msg.s;
-        const callback = seq ? (err, val, cb, handle) => {
+        const callback = seq !== undefined ? (err, val, cb, handle) => {
             this._sendRaw({
                 r: seq,
                 e: errorSerializer(err),
@@ -52,36 +66,37 @@ class Jmsg {
 
         let fn, tmp;
         const handlers = this.handlers;
-        if ((tmp = msg.r)) {
+        if ((tmp = msg.r) !== undefined) {
             const callbacks = this._callbacks;
             fn = callbacks[tmp];
             if (fn) {
-                delete callbacks[tmp];
+                callbacks[tmp] = undefined;
                 clearTimeout(fn.timeout);
+                this._trimCallbacks();
                 fn.fn.call(handlers, msg.e, msg.v, callback, handle);
             }
-            else if (seq) {
+            else if (seq !== undefined) {
                 callback(Error("Unknown sequence number"));
             }
         }
-        else if ((tmp = msg.t)) {
+        else if ((tmp = msg.t) !== undefined) {
             fn = handlers.hasOwnProperty(tmp) && handlers[tmp];
             if (fn)
                 fn.call(handlers, msg.v, callback, handle);
-            else if (seq)
+            else if (seq !== undefined)
                 callback(Error("No such action"));
         }
     }
 
     // Close the instance, finishing all callbacks.
     close(err) {
-        if (!err) err = Error("Connection closed");
+        if (!err)
+            err = Error("Connection closed");
         const handlers = this._handlers;
-        const callbacks = this._callbacks;
-        this._callbacks = Object.create(null);
+        const callbacks = this._callbacks.slice(0);
+        this._callbacks.length = 0;
         this._writeFn = null;
-        Object.keys(callbacks).forEach((key) => {
-            const fn = callbacks[key];
+        callbacks.forEach((fn) => {
             clearTimeout(fn.timeout);
             fn.fn.call(handlers, err, null, exports.noReplyCallback, null);
         });
