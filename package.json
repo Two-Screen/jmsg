@@ -2,10 +2,10 @@
   "name": "jmsg",
   "version": "0.1.6",
   "description": "Duplex JSON event / action channels",
-  "homepage": "http://github.com/stephank/jmsg",
+  "homepage": "http://github.com/Two-Screen/jmsg",
   "repository": {
     "type": "git",
-    "url": "http://github.com/stephank/jmsg.git"
+    "url": "http://github.com/Two-Screen/jmsg.git"
   },
   "author": {
     "name": "Stéphan Kochen",
