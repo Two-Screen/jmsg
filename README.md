@@ -6,16 +6,16 @@ action / reply and events.
 
 ### Installing
 
-    $ npm install jmsg
+    $ npm install --save jmsg
 
 ### Usage
 
-    var jmsg = require('jmsg');
+    const jmsg = require('jmsg');
 
     jmsg.stream(socket, {
-        foobar: function(obj) {
+        foobar(obj) {
             /* ... */
-        };
+        }
     });
 
 The `jmsg.stream(stream, handlers)` method takes a duplex stream, like a
